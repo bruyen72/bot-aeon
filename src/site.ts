@@ -17,6 +17,7 @@ const methodContents = document.querySelectorAll('.method-content') as NodeListO
 // Estado
 let currentMethod = 'qr';
 let statusInterval: number | null = null;
+let socket: any = null;
 
 // Função para logs
 function addLog(message: string, type: 'info' | 'success' | 'error' = 'info') {
@@ -60,25 +61,54 @@ function updateStatus(online: boolean, message: string) {
     }
 }
 
-// Função para gerar QR code visual
-function showQRCode(qrData: string) {
-    qrDisplay.innerHTML = '';
+// Função para gerar QR code visual MELHORADA
+function showQRCode(qrData: string, qrImage?: string) {
+    const qrSection = document.querySelector('.method-content.active');
+    if (!qrSection) return;
     
-    try {
-        // @ts-ignore
-        new QRCode(qrDisplay, {
-            text: qrData,
-            width: 256,
-            height: 256,
-            colorDark: '#000000',
-            colorLight: '#ffffff',
+    if (qrImage) {
+        // Usar imagem do servidor (melhor qualidade)
+        qrDisplay.innerHTML = `
+            <div style="background: white; padding: 20px; border-radius: 15px; text-align: center;">
+                <h2 style="color: #333; margin-top: 0;">📱 Escaneie com WhatsApp</h2>
+                <img src="${qrImage}" alt="QR Code WhatsApp" style="max-width: 250px; border: 2px solid #ddd; border-radius: 8px;" />
+                
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <h4 style="color: #155724; margin: 0 0 10px 0;">📋 Como conectar:</h4>
+                    <div style="color: #155724; font-size: 14px; text-align: left;">
+                        <p style="margin: 5px 0;"><strong>1.</strong> Abra WhatsApp no celular</p>
+                        <p style="margin: 5px 0;"><strong>2.</strong> Toque nos 3 pontos > <strong>Aparelhos conectados</strong></p>
+                        <p style="margin: 5px 0;"><strong>3.</strong> Toque em <strong>Conectar um aparelho</strong></p>
+                        <p style="margin: 5px 0;"><strong>4.</strong> <strong>Escaneie este QR Code</strong></p>
+                    </div>
+                </div>
+                
+                <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 12px; color: #856404;">
+                    ⏱️ QR Code expira em 1 minuto. Escaneie rápido!
+                </div>
+            </div>
+        `;
+        addLog('QR code visual exibido - Escaneie no WhatsApp', 'success');
+    } else {
+        // Fallback para biblioteca cliente
+        qrDisplay.innerHTML = '';
+        
+        try {
             // @ts-ignore
-            correctLevel: QRCode.CorrectLevel.M,
-        });
-        addLog('QR code exibido - Escaneie no WhatsApp', 'success');
-    } catch (error) {
-        qrDisplay.innerHTML = `<textarea readonly style="width:100%;height:100px;font-family:monospace">${qrData}</textarea>`;
-        addLog('QR code gerado (modo texto)', 'info');
+            new QRCode(qrDisplay, {
+                text: qrData,
+                width: 256,
+                height: 256,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                // @ts-ignore
+                correctLevel: QRCode.CorrectLevel.M,
+            });
+            addLog('QR code gerado - Escaneie no WhatsApp', 'success');
+        } catch (error) {
+            qrDisplay.innerHTML = `<textarea readonly style="width:100%;height:100px;font-family:monospace">${qrData}</textarea>`;
+            addLog('QR code gerado (modo texto)', 'info');
+        }
     }
 }
 
@@ -89,7 +119,49 @@ function showPairingCode(code: string) {
     addLog(`Código de pareamento: ${code}`, 'success');
 }
 
-// Conectar com QR
+// WebSocket MELHORADO
+function initWebSocket() {
+    try {
+        // @ts-ignore
+        socket = io({
+            timeout: 20000,
+            forceNew: true,
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 2000
+        });
+        
+        socket.on('connect', () => {
+            addLog('🔗 Conectado ao servidor WebSocket', 'success');
+        });
+        
+        socket.on('disconnect', (reason: string) => {
+            addLog(`❌ WebSocket desconectado: ${reason}`, 'error');
+        });
+        
+        // Eventos do bot
+        socket.on('qr-code', (data: any) => {
+            console.log('QR Code recebido via WebSocket');
+            addLog('📱 QR Code gerado via WebSocket!', 'success');
+            showQRCode(data.qr, data.qrImage);
+        });
+        
+        socket.on('status-update', (data: any) => {
+            console.log('Status update:', data);
+            updateStatus(data.status === 'connected', data.message);
+            if (data.message) {
+                addLog(data.message, data.status === 'connected' ? 'success' : 'info');
+            }
+        });
+        
+    } catch (error) {
+        addLog(`❌ Erro ao inicializar WebSocket: ${error}`, 'error');
+        // Fallback para polling HTTP
+        startStatusCheck();
+    }
+}
+
+// Conectar com QR (mantém compatibilidade)
 async function connectQR() {
     btnConnectQR.disabled = true;
     btnConnectQR.innerHTML = '⏳ Gerando QR...';
@@ -110,7 +182,11 @@ async function connectQR() {
                 showQRCode(result.qr);
             }
             addLog(result.message, 'success');
-            startStatusCheck();
+            
+            // Se não temos WebSocket, usar polling
+            if (!socket || !socket.connected) {
+                startStatusCheck();
+            }
         } else {
             addLog(result.message, 'error');
             qrDisplay.innerHTML = '<p>❌ Erro ao gerar QR code</p>';
@@ -154,7 +230,11 @@ async function connectPairing() {
                 showPairingCode(result.pairingCode);
             }
             addLog(result.message, 'success');
-            startStatusCheck();
+            
+            // Se não temos WebSocket, usar polling
+            if (!socket || !socket.connected) {
+                startStatusCheck();
+            }
         } else {
             addLog(result.message, 'error');
         }
@@ -196,7 +276,7 @@ async function disconnectBot() {
     }
 }
 
-// Verificar status
+// Verificar status (fallback para HTTP polling)
 function startStatusCheck() {
     if (statusInterval) clearInterval(statusInterval);
     
@@ -271,7 +351,26 @@ phoneInput?.addEventListener('input', (e) => {
     target.value = value;
 });
 
-// Inicialização
-addLog('Sistema iniciado', 'success');
-addLog('Escolha um método: QR Code ou Código de pareamento', 'info');
-updateStatus(false, 'Desconectado');
+// Inicialização MELHORADA
+document.addEventListener('DOMContentLoaded', () => {
+    addLog('🚀 Sistema iniciado com WebSocket!', 'success');
+    addLog('Escolha um método: QR Code ou Código de pareamento', 'info');
+    updateStatus(false, 'Desconectado');
+    
+    // Inicializar WebSocket
+    initWebSocket();
+    
+    // Heartbeat para WebSocket
+    setInterval(() => {
+        if (socket && socket.connected) {
+            socket.emit('ping');
+        }
+    }, 30000);
+});
+
+// Cleanup
+window.addEventListener('beforeunload', () => {
+    if (socket) {
+        socket.disconnect();
+    }
+});

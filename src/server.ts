@@ -13,10 +13,19 @@ import makeWASocket, {
 import P from 'pino';
 import { rmSync } from 'fs';
 import * as qrcode from 'qrcode-terminal';
+import * as QRCode from 'qrcode';
+import { Server } from 'socket.io';
+import http from 'http';
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] },
+    pingTimeout: 60000,
+    pingInterval: 25000
+});
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -75,15 +84,8 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
             auth: state,
             logger,
             printQRInTerminal: false,
-            browser: ['Aeon Bot', 'Desktop', '1.0.0'],
-            connectTimeoutMs: 30_000,
-            defaultQueryTimeoutMs: 10_000,
-            keepAliveIntervalMs: 5_000,
-            retryRequestDelayMs: 100,
-            maxMsgRetryCount: 1,
-            generateHighQualityLinkPreview: false,
-            syncFullHistory: true,
-            qrTimeout: 20_000,
+            browser: ['Aeon Bot', 'Chrome', '1.0.0'],
+            markOnlineOnConnect: false
         });
 
         console.log('👂 Configurando listeners de conexão...');
@@ -104,11 +106,33 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                 });
 
                 if (qr && !resolved) {
-                    console.log('📱 QR Code gerado e exibindo no terminal:');
-                    console.log('🔗 Abra WhatsApp → Menu → Dispositivos conectados → Conectar dispositivo');
+                    console.log('📱 QR Code gerado!');
                     qrcode.generate(qr, { small: true });
-                    
                     currentQR = qr;
+                    
+                    // Gerar imagem QR e enviar via WebSocket
+                    QRCode.toDataURL(qr, {
+                        width: 256,
+                        margin: 2,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        }
+                    }).then((qrImage) => {
+                        io.emit('qr-code', { 
+                            qr: qr, 
+                            qrImage: qrImage
+                        });
+                        
+                        io.emit('status-update', { 
+                            status: 'connecting', 
+                            message: '📱 QR Code gerado! Escaneie agora' 
+                        });
+                    }).catch((err) => {
+                        console.error('Erro ao gerar QR:', err);
+                        io.emit('qr-code', { qr: qr });
+                    });
+                    
                     resolved = true;
                     isConnecting = false;
                     resolve({ success: true, message: 'QR code gerado - Escaneie rapidamente!', qr });
@@ -145,6 +169,11 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                     isOnline = true;
                     isConnecting = false;
                     currentQR = '';
+                    
+                    io.emit('status-update', { 
+                        status: 'connected', 
+                        message: '✅ WhatsApp conectado!' 
+                    });
                     
                     if (!resolved) {
                         resolved = true;
@@ -210,14 +239,8 @@ async function connectWithPairing(phoneNumber: string): Promise<{ success: boole
             auth: state,
             logger,
             printQRInTerminal: false,
-            browser: ['Aeon Bot', 'Desktop', '1.0.0'],
-            connectTimeoutMs: 30_000,
-            defaultQueryTimeoutMs: 10_000,
-            keepAliveIntervalMs: 5_000,
-            retryRequestDelayMs: 100,
-            maxMsgRetryCount: 1,
-            generateHighQualityLinkPreview: false,
-            syncFullHistory: true
+            browser: ['Aeon Bot', 'Chrome', '1.0.0'],
+            markOnlineOnConnect: false
         });
 
         console.log('🔢 Verificando se precisa de código de pareamento...');
@@ -378,7 +401,28 @@ app.get('/src/site.js', (req, res) => {
     res.sendFile(join(__dirname, 'site.js'));
 });
 
-app.listen(PORT, () => {
+// WebSocket com heartbeat
+io.on('connection', (socket) => {
+    console.log('👤 Cliente conectado:', socket.id);
+    
+    socket.emit('status-update', {
+        status: isOnline ? 'connected' : 'offline',
+        connected: isOnline,
+        qr: currentQR,
+        message: `Status: ${isOnline ? 'conectado' : 'offline'}`
+    });
+    
+    socket.on('disconnect', () => {
+        console.log('👤 Cliente desconectado:', socket.id);
+    });
+    
+    socket.on('ping', () => {
+        socket.emit('pong', { timestamp: new Date() });
+    });
+});
+
+server.listen(PORT, () => {
     console.log(`🌐 Servidor rodando em http://localhost:${PORT}`);
     console.log(`📱 Interface disponível na URL acima`);
+    console.log('🔗 WebSocket ativo');
 });
