@@ -75,13 +75,15 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
             auth: state,
             logger,
             printQRInTerminal: false,
-            browser: ['Aeon Bot', 'Chrome', '120.0.0'],
-            connectTimeoutMs: 60_000,
-            defaultQueryTimeoutMs: 20_000,
-            keepAliveIntervalMs: 10_000,
-            retryRequestDelayMs: 250,
-            maxMsgRetryCount: 3,
-            generateHighQualityLinkPreview: false
+            browser: ['Aeon Bot', 'Desktop', '1.0.0'],
+            connectTimeoutMs: 30_000,
+            defaultQueryTimeoutMs: 10_000,
+            keepAliveIntervalMs: 5_000,
+            retryRequestDelayMs: 100,
+            maxMsgRetryCount: 1,
+            generateHighQualityLinkPreview: false,
+            syncFullHistory: true,
+            qrTimeout: 20_000,
         });
 
         console.log('👂 Configurando listeners de conexão...');
@@ -125,6 +127,14 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                     isConnecting = false;
                     currentQR = '';
                     
+                    // Reconnect automatically if not logged out
+                    if (shouldReconnect && !resolved) {
+                        console.log('🔄 Tentando reconexão automática...');
+                        setTimeout(() => {
+                            connectWithQR();
+                        }, 2000);
+                    }
+                    
                     if (!resolved) {
                         resolved = true;
                         resolve({ success: false, message: `Conexão fechada: ${lastDisconnect?.error?.message}` });
@@ -148,7 +158,7 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                 saveCreds();
             });
 
-            // Timeout reduzido para ser mais rápido
+            // Timeout ultra rápido
             setTimeout(() => {
                 if (!resolved) {
                     console.log('⏰ Timeout atingido na conexão');
@@ -156,7 +166,7 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                     isConnecting = false;
                     resolve({ success: false, message: 'Timeout - Tente novamente' });
                 }
-            }, 45000);
+            }, 20000);
         });
 
     } catch (error: any) {
@@ -200,13 +210,14 @@ async function connectWithPairing(phoneNumber: string): Promise<{ success: boole
             auth: state,
             logger,
             printQRInTerminal: false,
-            browser: ['Aeon Bot', 'Chrome', '120.0.0'],
-            connectTimeoutMs: 60_000,
-            defaultQueryTimeoutMs: 15_000,
-            keepAliveIntervalMs: 10_000,
-            retryRequestDelayMs: 250,
-            maxMsgRetryCount: 2,
-            generateHighQualityLinkPreview: false
+            browser: ['Aeon Bot', 'Desktop', '1.0.0'],
+            connectTimeoutMs: 30_000,
+            defaultQueryTimeoutMs: 10_000,
+            keepAliveIntervalMs: 5_000,
+            retryRequestDelayMs: 100,
+            maxMsgRetryCount: 1,
+            generateHighQualityLinkPreview: false,
+            syncFullHistory: true
         });
 
         console.log('🔢 Verificando se precisa de código de pareamento...');
@@ -278,7 +289,7 @@ async function connectWithPairing(phoneNumber: string): Promise<{ success: boole
                 resolve({ success: true, message: 'Código gerado - Digite no WhatsApp!', pairingCode: currentPairingCode });
             }
 
-            // Timeout reduzido
+            // Timeout ultra rápido
             setTimeout(() => {
                 if (!resolved) {
                     console.log('⏰ Timeout atingido no pareamento');
@@ -286,7 +297,7 @@ async function connectWithPairing(phoneNumber: string): Promise<{ success: boole
                     isConnecting = false;
                     resolve({ success: false, message: 'Timeout - Tente novamente' });
                 }
-            }, 30000);
+            }, 15000);
         });
 
     } catch (error: any) {
