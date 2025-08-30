@@ -103,11 +103,11 @@ async function generateQRCodeImage(qrData: string): Promise<void> {
 
     new QRCode(qrContainer, {
       text: qrData,
-      width: 200,
-      height: 200,
+      width: 320,
+      height: 320,
       colorDark: '#000000',
       colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.L,
+      correctLevel: QRCode.CorrectLevel.M,
     });
 
     setTimeout(() => {
