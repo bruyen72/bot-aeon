@@ -133,10 +133,22 @@ function initWebSocket() {
         
         socket.on('connect', () => {
             addLog('🔗 Conectado ao servidor WebSocket', 'success');
+            // Solicitar status atual após conexão
+            socket.emit('request-status');
         });
         
         socket.on('disconnect', (reason: string) => {
             addLog(`❌ WebSocket desconectado: ${reason}`, 'error');
+        });
+        
+        socket.on('connect_error', (error: any) => {
+            addLog(`❌ Erro de conexão WebSocket: ${error.message}`, 'error');
+        });
+        
+        socket.on('reconnect', (attempt: number) => {
+            addLog(`🔄 WebSocket reconectado após ${attempt} tentativas`, 'success');
+            // Solicitar status após reconexão
+            socket.emit('request-status');
         });
         
         // Eventos do bot
@@ -148,9 +160,28 @@ function initWebSocket() {
         
         socket.on('status-update', (data: any) => {
             console.log('Status update:', data);
-            updateStatus(data.status === 'connected', data.message);
+            const isConnected = data.status === 'connected';
+            const isConnecting = data.status === 'connecting' || data.connecting;
+            
+            updateStatus(isConnected, data.message);
+            
             if (data.message) {
-                addLog(data.message, data.status === 'connected' ? 'success' : 'info');
+                const logType = isConnected ? 'success' : (isConnecting ? 'info' : 'error');
+                addLog(data.message, logType);
+            }
+            
+            // Debug logs
+            if (data.connecting && !isConnected) {
+                addLog('🔄 Bot conectando - aguarde...', 'info');
+            }
+        });
+        
+        socket.on('heartbeat', (data: any) => {
+            // Heartbeat silencioso - apenas atualizar se mudou status
+            if (data.status !== statusText.textContent?.toLowerCase()) {
+                console.log('Heartbeat status change:', data.status);
+                const isConnected = data.status === 'connected';
+                updateStatus(isConnected, data.status);
             }
         });
         

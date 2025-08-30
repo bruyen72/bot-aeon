@@ -142,9 +142,6 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                     resolve({ success: true, message: 'QR code gerado - Escaneie rapidamente!', qr });
                 }
 
-                if (connection === 'connecting') {
-                    console.log('⏳ Estabelecendo conexão com WhatsApp...');
-                }
 
                 if (connection === 'close') {
                     const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
@@ -218,15 +215,32 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                     isConnecting = false;
                     currentQR = '';
                     
+                    // Informações do usuário
+                    let userInfo = '✅ WhatsApp conectado!';
+                    if (sock && sock.user) {
+                        userInfo = `✅ Conectado: ${sock.user.name || sock.user.id}`;
+                        console.log('Conectado como:', userInfo);
+                    }
+                    
                     io.emit('status-update', { 
-                        status: 'connected', 
-                        message: '✅ WhatsApp conectado!' 
+                        status: 'connected',
+                        connected: true,
+                        connecting: false,
+                        message: userInfo
                     });
                     
                     if (!resolved) {
                         resolved = true;
                         resolve({ success: true, message: 'Conectado com sucesso!' });
                     }
+                } else if (connection === 'connecting') {
+                    console.log('⏳ Estabelecendo conexão com WhatsApp...');
+                    io.emit('status-update', { 
+                        status: 'connecting',
+                        connected: false,
+                        connecting: true,
+                        message: '⏳ Conectando ao WhatsApp...'
+                    });
                 }
             });
 
@@ -453,23 +467,67 @@ app.get('/src/site.js', (req, res) => {
     res.sendFile(join(__dirname, 'site.js'));
 });
 
-// WebSocket com heartbeat
+// WebSocket MELHORADO com heartbeat
 io.on('connection', (socket) => {
     console.log('👤 Cliente conectado:', socket.id);
     
+    // Enviar status completo imediatamente
+    const currentStatus = isOnline ? 'connected' : (isConnecting ? 'connecting' : 'offline');
     socket.emit('status-update', {
-        status: isOnline ? 'connected' : 'offline',
+        status: currentStatus,
         connected: isOnline,
+        connecting: isConnecting,
         qr: currentQR,
-        message: `Status: ${isOnline ? 'conectado' : 'offline'}`
+        pairingCode: currentPairingCode,
+        message: `Status: ${isOnline ? 'conectado' : (isConnecting ? 'conectando...' : 'offline')}`
     });
     
-    socket.on('disconnect', () => {
-        console.log('👤 Cliente desconectado:', socket.id);
+    // Se temos QR ativo, enviar imediatamente
+    if (currentQR && !isOnline) {
+        console.log('📱 Reenviando QR para cliente reconectado');
+        socket.emit('qr-code', { 
+            qr: currentQR,
+            message: 'QR ativo - Escaneie agora!' 
+        });
+    }
+    
+    // Heartbeat melhorado
+    const heartbeat = setInterval(() => {
+        if (socket.connected) {
+            socket.emit('heartbeat', {
+                timestamp: new Date(),
+                status: isOnline ? 'connected' : (isConnecting ? 'connecting' : 'offline'),
+                connected: isOnline,
+                connecting: isConnecting
+            });
+        } else {
+            clearInterval(heartbeat);
+        }
+    }, 15000); // A cada 15s
+    
+    socket.on('disconnect', (reason) => {
+        console.log('👤 Cliente desconectado:', socket.id, 'Motivo:', reason);
+        clearInterval(heartbeat);
     });
     
     socket.on('ping', () => {
-        socket.emit('pong', { timestamp: new Date() });
+        socket.emit('pong', { 
+            timestamp: new Date(),
+            status: isOnline ? 'connected' : (isConnecting ? 'connecting' : 'offline')
+        });
+    });
+    
+    // Novo evento para debug
+    socket.on('request-status', () => {
+        console.log('📡 Cliente solicitou status atual');
+        socket.emit('status-update', {
+            status: isOnline ? 'connected' : (isConnecting ? 'connecting' : 'offline'),
+            connected: isOnline,
+            connecting: isConnecting,
+            qr: currentQR,
+            pairingCode: currentPairingCode,
+            message: `Status: ${isOnline ? 'conectado' : (isConnecting ? 'conectando...' : 'offline')}`
+        });
     });
 });
 
