@@ -85,7 +85,11 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
             logger,
             printQRInTerminal: false,
             browser: ['Aeon Bot', 'Chrome', '1.0.0'],
-            markOnlineOnConnect: false
+            markOnlineOnConnect: false,
+            connectTimeoutMs: 60_000,
+            defaultQueryTimeoutMs: 0,
+            keepAliveIntervalMs: 30_000,
+            retryRequestDelayMs: 1000
         });
 
         console.log('👂 Configurando listeners de conexão...');
@@ -143,25 +147,69 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                 }
 
                 if (connection === 'close') {
-                    const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-                    console.log('❌ Conexão fechada. Motivo:', lastDisconnect?.error?.message);
-                    console.log('🔄 Deve reconectar?', shouldReconnect);
+                    const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+                    const errorMsg = lastDisconnect?.error?.message || 'Conexão fechada';
+                    
+                    console.log('❌ Conexão fechada. Status:', statusCode, 'Erro:', errorMsg);
                     
                     isOnline = false;
                     isConnecting = false;
                     currentQR = '';
                     
-                    // Reconnect automatically if not logged out
-                    if (shouldReconnect && !resolved) {
-                        console.log('🔄 Tentando reconexão automática...');
+                    // Tratar diferentes tipos de desconexão
+                    if (statusCode === DisconnectReason.badSession) {
+                        console.log('🗑️ Sessão inválida - limpando...');
+                        cleanup();
+                        io.emit('status-update', { 
+                            status: 'offline', 
+                            message: '🗑️ Sessão limpa. Reinicie o bot.' 
+                        });
+                    } else if (statusCode === DisconnectReason.loggedOut) {
+                        console.log('👋 Usuário fez logout');
+                        io.emit('status-update', { 
+                            status: 'offline', 
+                            message: '👋 Logout realizado.' 
+                        });
+                    } else if (statusCode === DisconnectReason.restartRequired || errorMsg.includes('restart required')) {
+                        console.log('🔄 Restart necessário - reiniciando automaticamente...');
+                        io.emit('status-update', { 
+                            status: 'reconnecting', 
+                            message: '🔄 Reiniciando conexão...' 
+                        });
                         setTimeout(() => {
-                            connectWithQR();
-                        }, 2000);
+                            if (!resolved) {
+                                console.log('🔄 Executando restart automático...');
+                                connectWithQR();
+                            }
+                        }, 3000);
+                    } else if (statusCode === DisconnectReason.timedOut) {
+                        console.log('⏰ Timeout - tentando reconectar...');
+                        io.emit('status-update', { 
+                            status: 'reconnecting', 
+                            message: '⏰ Timeout de conexão - reconectando...' 
+                        });
+                        setTimeout(() => {
+                            if (!resolved) {
+                                connectWithQR();
+                            }
+                        }, 5000);
+                    } else {
+                        // Outras desconexões - tentar reconectar
+                        console.log('🔄 Erro genérico - tentando reconectar...');
+                        io.emit('status-update', { 
+                            status: 'reconnecting', 
+                            message: `🔄 Reconectando: ${errorMsg}` 
+                        });
+                        setTimeout(() => {
+                            if (!resolved) {
+                                connectWithQR();
+                            }
+                        }, 5000);
                     }
                     
                     if (!resolved) {
                         resolved = true;
-                        resolve({ success: false, message: `Conexão fechada: ${lastDisconnect?.error?.message}` });
+                        resolve({ success: false, message: `Conexão fechada: ${errorMsg}` });
                     }
                 } else if (connection === 'open') {
                     console.log('🎉 CONECTADO COM SUCESSO AO WHATSAPP!');
@@ -187,7 +235,7 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                 saveCreds();
             });
 
-            // Timeout ultra rápido
+            // Timeout mais longo para estabilidade
             setTimeout(() => {
                 if (!resolved) {
                     console.log('⏰ Timeout atingido na conexão');
@@ -195,7 +243,7 @@ async function connectWithQR(): Promise<{ success: boolean; message: string; qr?
                     isConnecting = false;
                     resolve({ success: false, message: 'Timeout - Tente novamente' });
                 }
-            }, 20000);
+            }, 60000);
         });
 
     } catch (error: any) {
@@ -240,7 +288,11 @@ async function connectWithPairing(phoneNumber: string): Promise<{ success: boole
             logger,
             printQRInTerminal: false,
             browser: ['Aeon Bot', 'Chrome', '1.0.0'],
-            markOnlineOnConnect: false
+            markOnlineOnConnect: false,
+            connectTimeoutMs: 60_000,
+            defaultQueryTimeoutMs: 0,
+            keepAliveIntervalMs: 30_000,
+            retryRequestDelayMs: 1000
         });
 
         console.log('🔢 Verificando se precisa de código de pareamento...');
@@ -312,7 +364,7 @@ async function connectWithPairing(phoneNumber: string): Promise<{ success: boole
                 resolve({ success: true, message: 'Código gerado - Digite no WhatsApp!', pairingCode: currentPairingCode });
             }
 
-            // Timeout ultra rápido
+            // Timeout mais longo para estabilidade
             setTimeout(() => {
                 if (!resolved) {
                     console.log('⏰ Timeout atingido no pareamento');
@@ -320,7 +372,7 @@ async function connectWithPairing(phoneNumber: string): Promise<{ success: boole
                     isConnecting = false;
                     resolve({ success: false, message: 'Timeout - Tente novamente' });
                 }
-            }, 15000);
+            }, 45000);
         });
 
     } catch (error: any) {
