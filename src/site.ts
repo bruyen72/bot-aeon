@@ -89,7 +89,7 @@ async function generateQRCodeImage(qrData: string): Promise<void> {
     setTimeout(() => {
       const canvas = qrContainer.querySelector('canvas');
       if (canvas) {
-        canvas.alt = 'QR Code do WhatsApp';
+        canvas.title = 'QR Code do WhatsApp';
         resolve();
       } else {
         reject(new Error('Failed to generate QR code image'));
@@ -124,7 +124,7 @@ async function executeBot() {
       throw new Error(`Falha ao iniciar bot: ${response.status} - ${text.slice(0, 100)}...`);
     }
 
-    const data = await response.json();
+    const data: BotApiResponse = await response.json();
     addLog(`✅ ${data.message}`);
 
     if (data.online) {
@@ -171,7 +171,7 @@ async function disconnectBot() {
       throw new Error(`Falha ao desconectar bot: ${response.status} - ${text.slice(0, 100)}...`);
     }
 
-    const data = await response.json();
+    const data: BotApiResponse = await response.json();
     addLog(`✅ ${data.message}`);
     updateStatus('offline');
     qrDisplay.innerHTML = '<p>Nenhum QR code disponível</p>';
