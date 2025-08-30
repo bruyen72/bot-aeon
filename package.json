@@ -4,7 +4,7 @@
   "description": "Aeon é um bot do WhatsApp poderoso e flexível, projetado para automação e gerenciamento aprimorado de grupos.",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && cp -r src/img dist/ && cp -r src/cmd dist/",
+    "build": "tsc && cp -r src/img dist/ && cp -r src/cmd dist/ && cp index-new.html index.html && cp dist/server-new.js dist/server.js && cp dist/site-new.js dist/site.js",
     "start": "node dist/server.js",
     "dev": "ts-node src/index.ts",
     "dev:site": "vite",
