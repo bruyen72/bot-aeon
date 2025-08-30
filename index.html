@@ -3,27 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Aeon WhatsApp Bot - Interface Avançada" />
   <title>🤖 Aeon Bot - WhatsApp</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    :root {
-      --primary: #25d366;
-      --primary-dark: #1da851;
-      --secondary: #128c7e;
-      --bg-light: #f0f2f5;
-      --bg-dark: #0b141a;
-      --card-light: #ffffff;
-      --card-dark: #1f2937;
-      --text-light: #374151;
-      --text-dark: #f3f4f6;
-      --border-light: #e5e7eb;
-      --border-dark: #374151;
-      --success: #10b981;
-      --error: #ef4444;
-      --warning: #f59e0b;
-    }
-
     * {
       margin: 0;
       padding: 0;
@@ -31,11 +13,10 @@
     }
 
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg-light);
-      color: var(--text-light);
-      line-height: 1.6;
-      transition: all 0.3s ease;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
     }
 
     .container {
@@ -46,22 +27,19 @@
 
     .header {
       text-align: center;
+      color: white;
       margin-bottom: 3rem;
     }
 
     .header h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 3rem;
       margin-bottom: 0.5rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
 
     .header p {
-      font-size: 1.1rem;
-      opacity: 0.8;
+      font-size: 1.2rem;
+      opacity: 0.9;
     }
 
     .grid {
@@ -72,38 +50,32 @@
     }
 
     .card {
-      background: var(--card-light);
+      background: white;
       border-radius: 20px;
       padding: 2rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--border-light);
-      transition: all 0.3s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      backdrop-filter: blur(10px);
     }
 
     .card h2 {
       font-size: 1.5rem;
-      font-weight: 600;
       margin-bottom: 1.5rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      color: #333;
     }
 
     .status-indicator {
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: var(--error);
+      background: #ef4444;
       animation: pulse 2s infinite;
     }
 
     .status-indicator.online {
-      background: var(--success);
+      background: #10b981;
     }
 
     @keyframes pulse {
@@ -113,26 +85,29 @@
 
     .connection-methods {
       display: flex;
-      gap: 1rem;
-      margin-bottom: 2rem;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 0.5rem;
     }
 
     .method-tab {
       flex: 1;
-      padding: 1rem;
-      background: var(--bg-light);
-      border: 2px solid transparent;
-      border-radius: 12px;
-      text-align: center;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
       cursor: pointer;
-      transition: all 0.3s ease;
       font-weight: 600;
+      transition: all 0.3s;
+      font-size: 0.9rem;
     }
 
     .method-tab.active {
-      background: var(--primary);
+      background: #25d366;
       color: white;
-      border-color: var(--primary-dark);
+      transform: scale(1.02);
     }
 
     .method-content {
@@ -143,57 +118,40 @@
       display: block;
     }
 
-    .phone-input {
+    .btn {
       width: 100%;
       padding: 1rem;
-      border: 2px solid var(--border-light);
-      border-radius: 12px;
-      font-size: 1rem;
-      margin-bottom: 1rem;
-      transition: all 0.3s ease;
-    }
-
-    .phone-input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
-    }
-
-    .btn {
-      padding: 1rem 2rem;
       border: none;
       border-radius: 12px;
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      text-decoration: none;
-      justify-content: center;
-      width: 100%;
+      transition: all 0.3s;
       margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      background: linear-gradient(135deg, #25d366, #128c7e);
       color: white;
     }
 
     .btn-primary:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(37, 211, 102, 0.3);
+      box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
     }
 
     .btn-secondary {
-      background: linear-gradient(135deg, var(--error), #dc2626);
+      background: linear-gradient(135deg, #ef4444, #dc2626);
       color: white;
     }
 
     .btn-secondary:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+      box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
     }
 
     .btn:disabled {
@@ -202,60 +160,73 @@
       transform: none !important;
     }
 
+    .phone-input {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    .phone-input:focus {
+      outline: none;
+      border-color: #25d366;
+    }
+
     .qr-display {
       min-height: 200px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--bg-light);
+      background: #f8fafc;
+      border: 2px dashed #cbd5e1;
       border-radius: 16px;
       margin: 1rem 0;
       padding: 2rem;
-      border: 2px dashed var(--border-light);
+      text-align: center;
     }
 
-    .qr-display canvas,
-    .qr-display img {
-      max-width: 100%;
-      height: auto;
+    .qr-display canvas {
       border-radius: 12px;
       background: white;
       padding: 1rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .pairing-code {
-      font-size: 3rem;
+      font-size: 2.5rem;
       font-weight: 700;
-      color: var(--primary);
+      color: #25d366;
       text-align: center;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.3em;
       font-family: 'Courier New', monospace;
-      background: var(--bg-light);
+      background: linear-gradient(135deg, rgba(37, 211, 102, 0.1), rgba(18, 140, 126, 0.1));
       padding: 2rem;
       border-radius: 16px;
       margin: 1rem 0;
-      border: 2px solid var(--primary);
+      border: 2px solid #25d366;
     }
 
     .instruction {
       background: linear-gradient(135deg, rgba(37, 211, 102, 0.1), rgba(18, 140, 126, 0.1));
       padding: 1.5rem;
       border-radius: 12px;
-      border-left: 4px solid var(--primary);
+      border-left: 4px solid #25d366;
       margin: 1rem 0;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       line-height: 1.6;
     }
 
     .logs-container {
-      background: #0a0a0a;
+      background: #1a1a1a;
       color: #00ff00;
-      padding: 2rem;
+      padding: 1.5rem;
       border-radius: 16px;
       font-family: 'Courier New', monospace;
-      font-size: 0.9rem;
-      max-height: 400px;
+      font-size: 0.85rem;
+      max-height: 300px;
       overflow-y: auto;
       border: 2px solid #333;
       margin-top: 1rem;
@@ -263,84 +234,24 @@
 
     .log-entry {
       margin-bottom: 0.5rem;
-      opacity: 0;
-      transform: translateY(10px);
-      animation: logFadeIn 0.5s ease forwards;
+      animation: fadeIn 0.3s ease;
     }
 
-    @keyframes logFadeIn {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .hidden {
       display: none;
     }
 
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top-color: currentColor;
-      animation: spin 1s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      body {
-        background: var(--bg-dark);
-        color: var(--text-dark);
-      }
-
-      .card {
-        background: var(--card-dark);
-        border-color: var(--border-dark);
-      }
-
-      .method-tab {
-        background: var(--card-dark);
-        color: var(--text-dark);
-      }
-
-      .phone-input {
-        background: var(--card-dark);
-        color: var(--text-dark);
-        border-color: var(--border-dark);
-      }
-
-      .qr-display {
-        background: var(--card-dark);
-        border-color: var(--border-dark);
-      }
-
-      .instruction {
-        background: linear-gradient(135deg, rgba(37, 211, 102, 0.2), rgba(18, 140, 126, 0.2));
-      }
-    }
-
     @media (max-width: 768px) {
-      .container {
-        padding: 1rem;
-      }
-
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .connection-methods {
-        flex-direction: column;
-      }
-
-      .pairing-code {
-        font-size: 2rem;
-      }
+      .container { padding: 1rem; }
+      .grid { grid-template-columns: 1fr; }
+      .header h1 { font-size: 2rem; }
+      .connection-methods { flex-direction: column; }
+      .pairing-code { font-size: 2rem; }
     }
   </style>
 </head>
@@ -348,37 +259,36 @@
   <div class="container">
     <div class="header">
       <h1>🤖 Aeon Bot</h1>
-      <p>Interface Avançada para WhatsApp Bot</p>
+      <p>Interface Moderna para WhatsApp Bot</p>
     </div>
 
     <div class="grid">
-      <!-- Status Card -->
+      <!-- Status -->
       <div class="card">
         <h2>
           <span class="status-indicator" id="status-indicator"></span>
           Status da Conexão
         </h2>
         <p id="status-text">Desconectado</p>
-        
-        <button class="btn btn-secondary" id="btn-disconnect" style="margin-top: 1rem;">
+        <button class="btn btn-secondary" id="btn-disconnect">
           🔌 Desconectar
         </button>
       </div>
 
-      <!-- Connection Card -->
+      <!-- Conexão -->
       <div class="card">
         <h2>📱 Conectar ao WhatsApp</h2>
         
         <div class="connection-methods">
-          <div class="method-tab active" data-method="qr">
+          <button class="method-tab active" data-method="qr">
             📱 QR Code
-          </div>
-          <div class="method-tab" data-method="pairing">
+          </button>
+          <button class="method-tab" data-method="pairing">
             🔢 Código
-          </div>
+          </button>
         </div>
 
-        <!-- QR Code Method -->
+        <!-- QR Method -->
         <div class="method-content active" id="qr-method">
           <button class="btn btn-primary" id="btn-connect-qr">
             📱 Gerar QR Code
@@ -390,20 +300,20 @@
           
           <div class="instruction">
             <strong>📲 Como usar:</strong><br>
-            1. Abra o WhatsApp no seu celular<br>
-            2. Vá em Menu (⋯) → Dispositivos conectados<br>
-            3. Toque em "Conectar dispositivo"<br>
+            1. Abra o WhatsApp no celular<br>
+            2. Menu (⋯) → Dispositivos conectados<br>
+            3. Conectar dispositivo<br>
             4. Escaneie o QR code acima
           </div>
         </div>
 
-        <!-- Pairing Code Method -->
+        <!-- Pairing Method -->
         <div class="method-content" id="pairing-method">
           <input 
             type="tel" 
             class="phone-input" 
             id="phone-input" 
-            placeholder="Número do WhatsApp (ex: 5511999999999)"
+            placeholder="Número WhatsApp (ex: 5511999999999)"
           >
           
           <button class="btn btn-primary" id="btn-connect-pairing">
@@ -414,16 +324,16 @@
           
           <div class="instruction">
             <strong>📞 Como usar:</strong><br>
-            1. Digite seu número do WhatsApp (formato: 5511999999999)<br>
-            2. Clique em "Gerar Código"<br>
-            3. Abra o WhatsApp → Dispositivos conectados<br>
-            4. Digite o código de 8 dígitos que aparecerá
+            1. Digite seu número (formato: 5511999999999)<br>
+            2. Clique "Gerar Código"<br>
+            3. WhatsApp → Dispositivos conectados<br>
+            4. Digite o código de 8 dígitos
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Logs Card -->
+    <!-- Logs -->
     <div class="card">
       <h2>📋 Logs do Sistema</h2>
       <button class="btn btn-primary" id="btn-clear-logs">
