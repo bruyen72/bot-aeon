@@ -39,28 +39,53 @@ const logger = P({ level: 'silent' });
 
 // Função para inicializar o bot WhatsApp
 async function startWhatsAppBot(): Promise<{ qr?: string; online: boolean }> {
+    console.log('Iniciando bot WhatsApp...');
+    
+    // Se já conectado, retorna status
+    if (botOnline && sock) {
+        console.log('Bot já está conectado');
+        return { online: true };
+    }
+
+    // Se já está conectando, aguarda
     if (isConnecting) {
-        return { online: botOnline, qr: currentQR };
+        console.log('Bot já está conectando...');
+        return new Promise((resolve) => {
+            const checkInterval = setInterval(() => {
+                if (!isConnecting) {
+                    clearInterval(checkInterval);
+                    resolve({ online: botOnline, qr: currentQR });
+                }
+            }, 1000);
+        });
     }
 
     isConnecting = true;
     
     try {
-        // Limpar sessão anterior
+        // Limpar sessão anterior para forçar novo QR
         try {
             rmSync('./auth_info_baileys', { recursive: true, force: true });
-        } catch (e) {}
+            console.log('Sessão anterior limpa');
+        } catch (e) {
+            console.log('Nenhuma sessão anterior para limpar');
+        }
 
         const { state, saveCreds } = await useMultiFileAuthState('./auth_info_baileys');
+        console.log('Estado de autenticação carregado');
         
         sock = makeWASocket({
             auth: state,
             logger,
-            printQRInTerminal: false
+            printQRInTerminal: false,
+            browser: ['Aeon Bot', 'Chrome', '110.0.0']
         });
+
+        console.log('Socket WhatsApp criado');
 
         return new Promise((resolve) => {
             if (!sock) {
+                console.log('Erro: Socket não foi criado');
                 isConnecting = false;
                 resolve({ online: false });
                 return;
@@ -69,9 +94,11 @@ async function startWhatsAppBot(): Promise<{ qr?: string; online: boolean }> {
             let resolved = false;
 
             sock.ev.on('connection.update', (update: Partial<ConnectionState>) => {
+                console.log('Update de conexão:', update);
                 const { connection, lastDisconnect, qr } = update;
 
                 if (qr && !resolved) {
+                    console.log('QR code recebido:', qr.substring(0, 50) + '...');
                     currentQR = qr;
                     botOnline = false;
                     resolved = true;
@@ -80,7 +107,7 @@ async function startWhatsAppBot(): Promise<{ qr?: string; online: boolean }> {
                 }
 
                 if (connection === 'close') {
-                    const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+                    console.log('Conexão fechada:', lastDisconnect);
                     botOnline = false;
                     currentQR = '';
                     
@@ -90,6 +117,7 @@ async function startWhatsAppBot(): Promise<{ qr?: string; online: boolean }> {
                         resolve({ online: false });
                     }
                 } else if (connection === 'open') {
+                    console.log('Conexão estabelecida com sucesso!');
                     botOnline = true;
                     currentQR = '';
                     
@@ -101,16 +129,20 @@ async function startWhatsAppBot(): Promise<{ qr?: string; online: boolean }> {
                 }
             });
 
-            sock.ev.on('creds.update', saveCreds);
+            sock.ev.on('creds.update', (creds) => {
+                console.log('Credenciais atualizadas');
+                saveCreds();
+            });
 
-            // Timeout de segurança
+            // Timeout de segurança aumentado
             setTimeout(() => {
                 if (!resolved) {
+                    console.log('Timeout atingido, resolvendo com estado atual');
                     resolved = true;
                     isConnecting = false;
                     resolve({ online: botOnline, qr: currentQR });
                 }
-            }, 30000);
+            }, 45000);
         });
     } catch (error) {
         console.error('Erro ao iniciar bot:', error);

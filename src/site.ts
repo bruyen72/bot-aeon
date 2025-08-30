@@ -123,11 +123,6 @@ async function generateQRCodeImage(qrData: string): Promise<void> {
 }
 
 async function executeBot() {
-  if (isBotRunning) {
-    addLog('🤖 Bot já está executando...');
-    return;
-  }
-
   addLog('🚀 Iniciando bot e gerando novo QR code');
   isBotRunning = true;
   qrDisplay.innerHTML = '<p>📡 Gerando QR code...</p>';
@@ -150,29 +145,36 @@ async function executeBot() {
 
     const data: BotApiResponse = await response.json();
     addLog(`✅ ${data.message}`);
+    console.log('Resposta da API:', data); // Debug
 
     if (data.online) {
       updateStatus('online');
-      qrDisplay.innerHTML = '<p>Bot conectado - Nenhum QR code necessário</p>';
-    } else if (data.qr && data.qr !== currentQR) {
+      qrDisplay.innerHTML = '<p>✅ Bot conectado - Nenhum QR code necessário</p>';
+      isBotRunning = false;
+    } else if (data.qr) {
+      console.log('QR code recebido:', data.qr.substring(0, 50) + '...'); // Debug
       currentQR = data.qr;
       try {
         await generateQRCodeImage(data.qr);
         updateStatus('offline', true);
+        addLog('📱 QR code gerado com sucesso - Escaneie agora!');
       } catch (error) {
+        console.error('Erro ao gerar QR:', error); // Debug
         addLog('❌ Erro ao gerar imagem do QR code');
-        qrDisplay.innerHTML = `<p>QR code disponível</p><textarea readonly style="width: 100%; height: 100px; font-family: monospace;">${data.qr}</textarea>`;
+        qrDisplay.innerHTML = `<p>QR code texto:</p><textarea readonly style="width: 100%; height: 120px; font-family: monospace; font-size: 10px;">${data.qr}</textarea>`;
         updateStatus('offline', true);
       }
     } else {
       updateStatus('offline');
-      qrDisplay.innerHTML = '<p>Nenhum QR code disponível - Tente novamente</p>';
+      qrDisplay.innerHTML = '<p>❌ Nenhum QR code disponível - Tente novamente</p>';
       addLog('❌ Nenhum QR code gerado - Tente novamente');
+      isBotRunning = false;
     }
   } catch (error: any) {
+    console.error('Erro na execução:', error); // Debug
     addLog(`❌ Erro ao executar bot: ${error.message}`);
     isBotRunning = false;
-    qrDisplay.innerHTML = '<p>Nenhum QR code disponível - Tente novamente</p>';
+    qrDisplay.innerHTML = '<p>❌ Erro - Tente novamente</p>';
   }
 }
 
@@ -198,14 +200,15 @@ async function disconnectBot() {
     const data: BotApiResponse = await response.json();
     addLog(`✅ ${data.message}`);
     updateStatus('offline');
-    qrDisplay.innerHTML = '<p>Nenhum QR code disponível</p>';
+    qrDisplay.innerHTML = '<p>🔄 Clique em "Iniciar Bot" para gerar QR code</p>';
     if (qrTimeout) {
       clearTimeout(qrTimeout);
       qrTimeout = null;
     }
   } catch (error: any) {
     addLog(`❌ Erro ao desconectar bot: ${error.message}`);
-    qrDisplay.innerHTML = '<p>Nenhum QR code disponível</p>';
+    updateStatus('offline');
+    qrDisplay.innerHTML = '<p>🔄 Clique em "Iniciar Bot" para gerar QR code</p>';
   }
 }
 
