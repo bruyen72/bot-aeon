@@ -15,16 +15,40 @@ let lastLoggedStatus: 'online' | 'offline' | null = null;
 let qrTimeout: NodeJS.Timeout | null = null;
 
 function addLog(message: string) {
-  const timestamp = new Date().toLocaleTimeString();
+  const timestamp = new Date().toLocaleTimeString('pt-BR', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit' 
+  });
   const logEntry = document.createElement('div');
+  logEntry.style.opacity = '0';
+  logEntry.style.transform = 'translateY(10px)';
+  logEntry.style.transition = 'all 0.3s ease';
   logEntry.textContent = `[${timestamp}] ${message}`;
   logsContainer.appendChild(logEntry);
+  
+  // Animação de entrada
+  setTimeout(() => {
+    logEntry.style.opacity = '1';
+    logEntry.style.transform = 'translateY(0)';
+  }, 10);
+  
   logsContainer.scrollTop = logsContainer.scrollHeight;
 }
 
 function clearLogs() {
-  logsContainer.innerHTML = '';
-  addLog('Limpando os logs');
+  const logEntries = logsContainer.querySelectorAll('div');
+  logEntries.forEach((entry, index) => {
+    setTimeout(() => {
+      entry.style.opacity = '0';
+      entry.style.transform = 'translateY(-10px)';
+    }, index * 50);
+  });
+  
+  setTimeout(() => {
+    logsContainer.innerHTML = '';
+    addLog('🧹 Logs limpos com sucesso');
+  }, logEntries.length * 50 + 300);
 }
 
 function updateStatus(status: 'online' | 'offline', hasQR: boolean = false) {
@@ -62,7 +86,7 @@ function updateStatus(status: 'online' | 'offline', hasQR: boolean = false) {
         }
       }, 20000);
     } else {
-      qrDisplay.innerHTML = '<p>Aguardando inicialização do bot...</p>';
+      qrDisplay.innerHTML = '<p>⏳ Aguardando inicialização do bot...</p>';
       if (lastLoggedStatus !== 'offline') {
         addLog('❌ Bot está offline - Clique em "Iniciar Bot" para gerar um novo QR code');
         lastLoggedStatus = 'offline';
@@ -106,7 +130,7 @@ async function executeBot() {
 
   addLog('🚀 Iniciando bot e gerando novo QR code');
   isBotRunning = true;
-  qrDisplay.innerHTML = '<p>Carregando QR code...</p>';
+  qrDisplay.innerHTML = '<p>📡 Gerando QR code...</p>';
 
   try {
     addLog('📱 Iniciando o bot...');

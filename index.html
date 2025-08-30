@@ -68,28 +68,73 @@
     }
 
     button {
-      padding: 10px 14px;
-      border-radius: 10px;
-      border: 1px solid #5555;
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 2px solid transparent;
       cursor: pointer;
-      background: #eee;
-      color: #111;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
     }
 
     button:disabled {
-      opacity: 0.5;
+      opacity: 0.6;
       cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    #btn-start-bot {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+    }
+
+    #btn-start-bot:hover:not(:disabled) {
+      box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3);
+    }
+
+    #btn-disconnect-bot {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+    }
+
+    #btn-disconnect-bot:hover:not(:disabled) {
+      box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+    }
+
+    #btn-clear-logs {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
+    }
+
+    #btn-clear-logs:hover:not(:disabled) {
+      box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+    }
+
+
+    .qr-card {
+      transition: all 0.3s ease;
+      border: 2px solid #22c55e;
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
     }
 
     @media (prefers-color-scheme: dark) {
-      button {
-        background: #222;
-        color: #eee;
+      .qr-card {
+        background: linear-gradient(135deg, #0c1117 0%, #1a1a1a 100%);
+        border-color: #22c55e;
       }
-    }
-
-    .qr-card {
-      transition: opacity 0.3s ease;
     }
 
     .qr-card.hidden {
@@ -106,28 +151,47 @@
     .qr-display img,
     .qr-display canvas,
     .qr-display p {
-      max-width: 200px;
-      border: 1px solid #4444;
-      border-radius: 8px;
-      padding: 8px;
+      max-width: 250px;
+      border: 2px solid #4444;
+      border-radius: 12px;
+      padding: 12px;
       text-align: center;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .qr-display img,
+      .qr-display canvas,
+      .qr-display p {
+        background: #1a1a1a;
+        border-color: #555;
+      }
     }
 
     .logs {
-      background: #f5f5f5;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 12px;
-      font-family: monospace;
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
       font-size: 0.9rem;
-      max-height: 200px;
+      max-height: 300px;
       overflow-y: auto;
+      line-height: 1.6;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .logs div {
+      margin-bottom: 4px;
+      padding: 2px 0;
     }
 
     @media (prefers-color-scheme: dark) {
       .logs {
-        background: #1a1a1a;
-        border-color: #333;
+        background: #0f172a;
+        border-color: #334155;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
       }
     }
 
@@ -138,15 +202,22 @@
     }
 
     .qr-instruction {
-      margin-top: 8px;
-      font-size: 0.9rem;
-      color: #555;
+      margin-top: 12px;
+      font-size: 0.95rem;
+      color: #16a34a;
       text-align: center;
+      font-weight: 600;
+      padding: 8px;
+      background: rgba(34, 197, 94, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(34, 197, 94, 0.2);
     }
 
     @media (prefers-color-scheme: dark) {
       .qr-instruction {
-        color: #aaa;
+        color: #4ade80;
+        background: rgba(34, 197, 94, 0.15);
+        border-color: rgba(34, 197, 94, 0.3);
       }
     }
   </style>
@@ -164,19 +235,19 @@
         <span id="status-text">Desconectado</span>
       </div>
       <div class="actions">
-        <button id="btn-check-status">Verificar Status</button>
-        <button id="btn-start-bot">Iniciar Bot (Novo QR)</button>
-        <button id="btn-disconnect-bot">Desconectar Bot</button>
-        <button id="btn-clear-logs">Limpar</button>
+        <button id="btn-check-status">🔍 Verificar Status</button>
+        <button id="btn-start-bot">🚀 Iniciar Bot</button>
+        <button id="btn-disconnect-bot">🔌 Desconectar</button>
+        <button id="btn-clear-logs">🗑️ Limpar Logs</button>
       </div>
     </section>
 
     <section class="card qr-card" id="qr-card">
-      <h2>QR Code do WhatsApp</h2>
+      <h2>📱 QR Code do WhatsApp</h2>
       <div id="qr-display" class="qr-display">
-        <p>Nenhum QR code disponível</p>
+        <p>🔄 Clique em "Iniciar Bot" para gerar QR code</p>
       </div>
-      <p class="qr-instruction">Escaneie o QR code em até 20 segundos para conectar ao WhatsApp</p>
+      <p class="qr-instruction">📲 Abra o WhatsApp → Menu (⋯) → Dispositivos conectados → Conectar dispositivo → Escaneie este QR code em até 20 segundos</p>
     </section>
 
     <section class="card">
