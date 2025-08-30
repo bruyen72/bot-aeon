@@ -12,6 +12,7 @@ import makeWASocket, {
 } from '@whiskeysockets/baileys';
 import P from 'pino';
 import { rmSync } from 'fs';
+import * as qrcode from 'qrcode-terminal';
 
 dotenv.config();
 
@@ -77,7 +78,7 @@ async function startWhatsAppBot(): Promise<{ qr?: string; online: boolean }> {
         sock = makeWASocket({
             auth: state,
             logger,
-            printQRInTerminal: true,
+            printQRInTerminal: false,
             browser: ['Aeon Bot', 'Chrome', '110.0.0']
         });
 
@@ -98,7 +99,13 @@ async function startWhatsAppBot(): Promise<{ qr?: string; online: boolean }> {
                 const { connection, lastDisconnect, qr } = update;
 
                 if (qr && !resolved) {
-                    console.log('QR code recebido:', qr.substring(0, 50) + '...');
+                    console.log('QR code recebido, exibindo no terminal:');
+                    console.log('🔗 Abra o WhatsApp e escaneie o código QR');
+                    console.log('⏱️ QR code válido por 60 segundos...');
+                    
+                    // Exibir QR code no terminal
+                    qrcode.generate(qr, { small: true });
+                    
                     currentQR = qr;
                     botOnline = false;
                     resolved = true;
