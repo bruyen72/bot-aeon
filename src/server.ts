@@ -77,7 +77,7 @@ async function startWhatsAppBot(): Promise<{ qr?: string; online: boolean }> {
         sock = makeWASocket({
             auth: state,
             logger,
-            printQRInTerminal: false,
+            printQRInTerminal: true,
             browser: ['Aeon Bot', 'Chrome', '110.0.0']
         });
 
