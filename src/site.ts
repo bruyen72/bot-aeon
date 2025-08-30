@@ -3,11 +3,15 @@ const statusText = document.getElementById('status-text') as HTMLSpanElement;
 const btnStartBot = document.getElementById('btn-start-bot') as HTMLButtonElement;
 const btnDisconnectBot = document.getElementById('btn-disconnect-bot') as HTMLButtonElement;
 const btnClearLogs = document.getElementById('btn-clear-logs') as HTMLButtonElement;
+const qrDisplay = document.getElementById('qr-display') as HTMLDivElement;
+const qrCard = document.getElementById('qr-card') as HTMLDivElement;
 const logsContainer = document.getElementById('logs') as HTMLDivElement;
 
 let botStatus: 'online' | 'offline' = 'offline';
+let currentQR: string = '';
 let isBotRunning: boolean = false;
 let lastLoggedStatus: 'online' | 'offline' | null = null;
+let qrTimeout: NodeJS.Timeout | null = null;
 
 function addLog(message: string) {
   const timestamp = new Date().toLocaleTimeString('pt-BR', { 
@@ -46,40 +50,85 @@ function clearLogs() {
   }, logEntries.length * 50 + 300);
 }
 
-function updateStatus(status: 'online' | 'offline') {
-  if (status === botStatus) return;
+function updateStatus(status: 'online' | 'offline', hasQR: boolean = false) {
+  if (status === botStatus && !hasQR) return;
 
   botStatus = status;
 
   if (status === 'online') {
     statusIndicator.className = 'status-indicator status-online';
     statusText.textContent = 'Conectado';
+    qrCard.classList.add('hidden');
     if (lastLoggedStatus !== 'online') {
       addLog('✅ Bot está online e conectado ao WhatsApp');
       lastLoggedStatus = 'online';
     }
+    if (qrTimeout) {
+      clearTimeout(qrTimeout);
+      qrTimeout = null;
+    }
   } else {
     statusIndicator.className = 'status-indicator status-offline';
     statusText.textContent = 'Desconectado';
-    if (lastLoggedStatus !== 'offline') {
-      addLog('❌ Bot está offline');
-      lastLoggedStatus = 'offline';
+    qrCard.classList.remove('hidden');
+    if (hasQR) {
+      if (lastLoggedStatus !== 'offline') {
+        addLog('📱 QR code disponível - Escaneie em até 60 segundos');
+        lastLoggedStatus = 'offline';
+      }
+      // Configura timeout para alertar sobre expiração do QR code
+      if (qrTimeout) clearTimeout(qrTimeout);
+      qrTimeout = setTimeout(() => {
+        if (botStatus !== 'online') {
+          addLog('⚠️ QR code expirou - Clique em "Iniciar Bot" para gerar um novo');
+          qrDisplay.innerHTML = '<p>⚠️ QR code expirou - Tente novamente</p>';
+        }
+      }, 60000);
+    } else {
+      qrDisplay.innerHTML = '<p>🔄 Clique em "Iniciar Bot" para gerar QR code</p>';
+      if (lastLoggedStatus !== 'offline') {
+        addLog('❌ Bot está offline');
+        lastLoggedStatus = 'offline';
+      }
     }
   }
 }
 
+async function generateQRCodeImage(qrData: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    qrDisplay.innerHTML = '';
+    const qrContainer = document.createElement('div');
+    qrDisplay.appendChild(qrContainer);
+
+    new QRCode(qrContainer, {
+      text: qrData,
+      width: 320,
+      height: 320,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+
+    setTimeout(() => {
+      const canvas = qrContainer.querySelector('canvas');
+      if (canvas) {
+        canvas.title = 'QR Code do WhatsApp';
+        resolve();
+      } else {
+        reject(new Error('Failed to generate QR code image'));
+      }
+    }, 100);
+  });
+}
 
 async function executeBot() {
-  if (isBotRunning) {
-    addLog('🤖 Bot já está em execução...');
-    return;
-  }
-
-  addLog('🚀 Iniciando bot...');
-  addLog('📱 QR code será exibido nos logs do servidor');
+  addLog('🚀 Iniciando bot e gerando novo QR code');
   isBotRunning = true;
+  qrDisplay.innerHTML = '<p>📡 Gerando QR code...</p>';
 
   try {
+    addLog('📱 Iniciando o bot...');
+
     const response = await fetch('/api/start-bot', {
       method: 'POST',
       headers: {
@@ -98,22 +147,37 @@ async function executeBot() {
 
     if (data.online) {
       updateStatus('online');
+      qrDisplay.innerHTML = '<p>✅ Bot conectado - Nenhum QR code necessário</p>';
       isBotRunning = false;
-    } else {
-      updateStatus('offline');
-      addLog('📱 Verifique os logs do servidor para ver o QR code');
+    } else if (data.qr && data.qr !== currentQR) {
+      currentQR = data.qr;
+      try {
+        await generateQRCodeImage(data.qr);
+        updateStatus('offline', true);
+      } catch (error) {
+        addLog('❌ Erro ao gerar imagem do QR code');
+        qrDisplay.innerHTML = `<p>QR code disponível</p><textarea readonly style="width: 100%; height: 100px; font-family: monospace;">${data.qr}</textarea>`;
+        updateStatus('offline', true);
+      }
       // Verifica status periodicamente
       checkStatusPeriodically();
+    } else {
+      updateStatus('offline');
+      qrDisplay.innerHTML = '<p>Nenhum QR code disponível - Tente novamente</p>';
+      addLog('❌ Nenhum QR code gerado - Tente novamente');
+      isBotRunning = false;
     }
   } catch (error: any) {
     addLog(`❌ Erro ao executar bot: ${error.message}`);
     isBotRunning = false;
+    qrDisplay.innerHTML = '<p>Nenhum QR code disponível - Tente novamente</p>';
   }
 }
 
 async function disconnectBot() {
   addLog('🔌 Desconectando bot...');
   isBotRunning = false;
+  currentQR = '';
 
   try {
     const response = await fetch('/api/start-bot', {
@@ -132,9 +196,15 @@ async function disconnectBot() {
     const data: BotApiResponse = await response.json();
     addLog(`✅ ${data.message}`);
     updateStatus('offline');
+    qrDisplay.innerHTML = '<p>🔄 Clique em "Iniciar Bot" para gerar QR code</p>';
+    if (qrTimeout) {
+      clearTimeout(qrTimeout);
+      qrTimeout = null;
+    }
   } catch (error: any) {
     addLog(`❌ Erro ao desconectar bot: ${error.message}`);
     updateStatus('offline');
+    qrDisplay.innerHTML = '<p>🔄 Clique em "Iniciar Bot" para gerar QR code</p>';
   }
 }
 
@@ -180,6 +250,6 @@ function checkStatusPeriodically() {
 }
 
 addLog('🚀 Sistema iniciado');
-addLog('💡 Clique em "Iniciar Bot" para conectar ao WhatsApp');
+addLog('💡 Clique em "Iniciar Bot" para gerar um novo QR code');
 
 updateStatus('offline');
